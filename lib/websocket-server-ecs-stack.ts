@@ -7,7 +7,7 @@ export class WebsocketServerEcsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    //creates the virtual private network
+    //creates the virtual private networkv
     const vpc = new ec2.Vpc(this, "MyVpc", { maxAzs: 2 });
     //create the cluster where we will deploy our container, called MyCluster
     //uses the vpc that we defined above
