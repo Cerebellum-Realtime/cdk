@@ -9,6 +9,7 @@ export class WebsocketServerEcsStack extends cdk.Stack {
     super(scope, id, props);
 
     const vpc = new ec2.Vpc(this, "MyVpc", { maxAzs: 2 });
+    
     const cluster = new ecs.Cluster(this, "MyCluster", { vpc });
 
     const elasticache = new Elasticache(this, id, vpc);
