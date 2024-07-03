@@ -1,13 +1,19 @@
 import { Construct } from "constructs";
+import { ECS } from "./ECS";
+import { Elasticache } from "./Elasticache";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as cdk from "aws-cdk-lib";
 
-export class Elasticache extends Construct {
-  // redisEndpointAddress: string;
-  // redisEndpointPort: string;
-
-  constructor(scope: Construct, id: string, vpc: ec2.IVpc) {
+export class LoadBalancedApplication extends Construct {
+  constructor(
+    scope: Construct,
+    id: string,
+    vpc: ec2.IVpc,
+    ecsCluster: cdk.aws_ecs.Cluster,
+    elasticache: Elasticache,
+    ecrImage: string
+  ) {
     super(scope, id);
 
     // Create a security group for the Load Balancer
@@ -41,9 +47,19 @@ export class Elasticache extends Construct {
       port: 80,
     });
 
+    const ecs = new ECS(
+      this,
+      id,
+      vpc,
+      albSecurityGroup,
+      ecsCluster,
+      elasticache,
+      ecrImage
+    );
+
     listener.addTargets("WebSocketServer-ECSTargets", {
       port: 80,
-      targets: [ecsService],
+      targets: [ecs.service],
       stickinessCookieDuration: cdk.Duration.minutes(1), // Enable stickiness and set cookie duration
       healthCheck: {
         path: "/", // The path where the health check endpoint is located – could implement /health path
