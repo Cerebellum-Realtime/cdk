@@ -1,8 +1,13 @@
 import { Construct } from "constructs";
+import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
+import path = require("path");
 
 export class ECS extends Construct {
   service: ecs.FargateService;
@@ -18,6 +23,41 @@ export class ECS extends Construct {
 
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
+    // Define the Dead Letter Queue (DLQ)
+    const dlq = new sqs.Queue(this, "MyDLQ", {
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    const queue = new sqs.Queue(this, "EventQueueQueue", {
+      visibilityTimeout: cdk.Duration.seconds(5),
+      deadLetterQueue: {
+        maxReceiveCount: 5, // After 5 failed attempts, the message will be moved to the DLQ
+        queue: dlq,
+      },
+    });
+
+    const myFunction = new lambda.Function(this, "MyFunction", {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: `index.handler`, //change index to your lamda name
+      code: lambda.Code.fromAsset(path.join("./lambda/")), // assuming your Lambda code is in the 'lambda' directory
+      environment: {
+        DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
+        DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
+      },
+    });
+
+    console.log(path.resolve(path.join("./lambda/")));
+
+    // Add the SQS queue as an event source for the Lambda function
+    myFunction.addEventSource(new eventsources.SqsEventSource(queue));
+
+    // Grant permissions for Lambda to write to DynamoDB table
+    dynamodb.messagesTable.grantReadWriteData(myFunction);
+    dynamodb.channelsTable.grantReadWriteData(myFunction);
+
+    queue.grantConsumeMessages(myFunction);
+    dlq.grantSendMessages(myFunction);
+
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
       "WebSocketServer-TaskDef",
@@ -26,7 +66,7 @@ export class ECS extends Construct {
         memoryLimitMiB: 512,
         runtimePlatform: {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          cpuArchitecture: ecs.CpuArchitecture.X86_64,
         },
         taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
@@ -50,7 +90,8 @@ export class ECS extends Construct {
       "Allow traffic from ALB to containers"
     );
 
-    const ecrImage = "public.ecr.aws/x1a0a3q3/ws-server:latest";
+    const ecrImage = "public.ecr.aws/b5g1w6x4/austin-ws-server:latest";
+    // "public.ecr.aws/x1a0a3q3/ws-server:latest";
 
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {
