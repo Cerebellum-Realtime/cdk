@@ -6,19 +6,44 @@ import * as cdk from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 
 export class DynamoDB extends Construct {
-  dynamoTable: dynamodb.TableV2;
+  messagesTable: dynamodb.TableV2;
+  channelsTable: dynamodb.TableV2;
   ecsTaskRole: cdk.aws_iam.Role;
 
   constructor(scope: Construct, id: string, vpc: ec2.IVpc) {
     super(scope, id);
 
-    const dynamoTable = new dynamodb.TableV2(this, "WebSocketServer-Table", {
-      tableName: "Messages",
-      partitionKey: { name: "channelId", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "timestamp", type: dynamodb.AttributeType.STRING },
-      billing: dynamodb.Billing.onDemand(),
-      removalPolicy: RemovalPolicy.DESTROY, // Optional: specify removal policy
-    });
+    const messagesTable = new dynamodb.TableV2(
+      this,
+      "WebSocketServer-MessagesTable",
+      {
+        tableName: "messages",
+        partitionKey: {
+          name: "channelId",
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: {
+          name: "createdAt_messageId",
+          type: dynamodb.AttributeType.STRING,
+        },
+        billing: dynamodb.Billing.onDemand(),
+        removalPolicy: RemovalPolicy.DESTROY, // Optional: specify removal policy
+      }
+    );
+
+    const channelsTable = new dynamodb.TableV2(
+      this,
+      "WebSocketServer-ChannelsTable",
+      {
+        tableName: "channels",
+        partitionKey: {
+          name: "channelName",
+          type: dynamodb.AttributeType.STRING,
+        },
+        billing: dynamodb.Billing.onDemand(),
+        removalPolicy: RemovalPolicy.DESTROY, // Optional: specify removal policy
+      }
+    );
 
     const ecsTaskRole = new iam.Role(this, "EcsTaskRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
@@ -27,7 +52,7 @@ export class DynamoDB extends Construct {
           statements: [
             new iam.PolicyStatement({
               actions: ["dynamodb:*"],
-              resources: [dynamoTable.tableArn],
+              resources: [messagesTable.tableArn, channelsTable.tableArn],
             }),
           ],
         }),
@@ -41,9 +66,11 @@ export class DynamoDB extends Construct {
       }
     );
 
-    dynamoTable.grantReadWriteData(ecsTaskRole);
+    messagesTable.grantReadWriteData(ecsTaskRole);
+    channelsTable.grantReadWriteData(ecsTaskRole);
 
-    this.dynamoTable = dynamoTable;
+    this.messagesTable = messagesTable;
+    this.channelsTable = channelsTable;
     this.ecsTaskRole = ecsTaskRole;
   }
 }

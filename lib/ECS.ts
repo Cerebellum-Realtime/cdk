@@ -61,7 +61,8 @@ export class ECS extends Construct {
       environment: {
         REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
         REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
-        DYNAMODB_TABLE: dynamodb.dynamoTable.tableName,
+        DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
+        DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: "WebSocketServer-Container",
