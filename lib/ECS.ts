@@ -39,14 +39,12 @@ export class ECS extends Construct {
     const myFunction = new lambda.Function(this, "MyFunction", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: `index.handler`, //change index to your lamda name
-      code: lambda.Code.fromAsset(path.join("./lambda/")), // assuming your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
       environment: {
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
       },
     });
-
-    console.log(path.resolve(path.join("./lambda/")));
 
     // Add the SQS queue as an event source for the Lambda function
     myFunction.addEventSource(new eventsources.SqsEventSource(queue));

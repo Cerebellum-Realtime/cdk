@@ -1,6 +1,14 @@
 const dynamoose = require("dynamoose");
+const AWS = require("aws-sdk");
 
-const ddb = new dynamoose.aws.ddb.DynamoDB();
+AWS.config.update({
+  region: "us-east-1",
+});
+
+// Create a DynamoDB client instance
+const ddb = new AWS.DynamoDB();
+
+// const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
 
 const channelSchema = new dynamoose.Schema({
@@ -19,16 +27,16 @@ exports.handler = async (event) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
 
   const newChannel = new Channel({
-    channelId: `12345test${record.body}`,
-    channelName: record.body,
+    channelId: `12345test${event.Records[0].body}`,
+    channelName: event.Records[0].body,
   });
 
   try {
     await newChannel.save();
-    return record.body;
+    return event.Records[0].body;
   } catch (e) {
     console.log(error);
-    return record.body;
+    return event.Records[0].body;
   }
 
   return {};
