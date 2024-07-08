@@ -10,9 +10,7 @@ export class LoadBalancedApplication extends Construct {
     scope: Construct,
     id: string,
     vpc: ec2.IVpc,
-    ecsCluster: cdk.aws_ecs.Cluster,
-    elasticache: Elasticache,
-    ecrImage: string
+    elasticache: Elasticache
   ) {
     super(scope, id);
 
@@ -47,15 +45,7 @@ export class LoadBalancedApplication extends Construct {
       port: 80,
     });
 
-    const ecs = new ECS(
-      this,
-      id,
-      vpc,
-      albSecurityGroup,
-      ecsCluster,
-      elasticache,
-      ecrImage
-    );
+    const ecs = new ECS(this, id, vpc, albSecurityGroup, elasticache);
 
     listener.addTargets("WebSocketServer-ECSTargets", {
       port: 80,

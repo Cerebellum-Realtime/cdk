@@ -1,22 +1,22 @@
 import { Construct } from "constructs";
-import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import { Elasticache } from "./Elasticache";
+import { DynamoDB } from "./DynamoDB";
 
 export class ECS extends Construct {
-  service: cdk.aws_ecs.FargateService;
+  service: ecs.FargateService;
 
   constructor(
     scope: Construct,
     id: string,
     vpc: ec2.IVpc,
     inboundPeerSecurityGroup: ec2.IPeer,
-    cluster: cdk.aws_ecs.Cluster,
-    elasticache: Elasticache,
-    ecrImage: string
+    elasticache: Elasticache
   ) {
     super(scope, id);
+
+    const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
@@ -28,6 +28,7 @@ export class ECS extends Construct {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
           cpuArchitecture: ecs.CpuArchitecture.ARM64,
         },
+        taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
     );
 
@@ -49,6 +50,8 @@ export class ECS extends Construct {
       "Allow traffic from ALB to containers"
     );
 
+    const ecrImage = "public.ecr.aws/x1a0a3q3/ws-server:latest";
+
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {
       image: ecs.ContainerImage.fromRegistry(ecrImage),
@@ -58,11 +61,14 @@ export class ECS extends Construct {
       environment: {
         REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
         REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
+        DYNAMODB_TABLE: dynamodb.dynamoTable.tableName,
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: "WebSocketServer-Container",
       }),
     });
+
+    const cluster = new ecs.Cluster(this, "WebSocketServer-Cluster", { vpc });
 
     this.service = new ecs.FargateService(
       this,
