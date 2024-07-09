@@ -4,9 +4,6 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.609.0",
-    "@aws-sdk/lib-dynamodb": "^3.610.0",
-    "aws-sdk": "^2.1656.0",
-    "dynamoose": "^2.8.1"
+    "dynamoose": "^4.0.1"
   }
 }

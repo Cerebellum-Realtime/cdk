@@ -1,14 +1,6 @@
 const dynamoose = require("dynamoose");
-const AWS = require("aws-sdk");
 
-AWS.config.update({
-  region: "us-east-1",
-});
-
-// Create a DynamoDB client instance
-const ddb = new AWS.DynamoDB();
-
-// const ddb = new dynamoose.aws.ddb.DynamoDB();
+const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
 
 const channelSchema = new dynamoose.Schema({
