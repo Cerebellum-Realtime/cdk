@@ -53,6 +53,7 @@ export class ECS extends Construct {
     dynamodb.messagesTable.grantReadWriteData(myFunction);
     dynamodb.channelsTable.grantReadWriteData(myFunction);
 
+    queue.grantSendMessages(dynamodb.ecsTaskRole);
     queue.grantConsumeMessages(myFunction);
     dlq.grantSendMessages(myFunction);
 
@@ -98,6 +99,7 @@ export class ECS extends Construct {
       cpu: 256,
       portMappings: [{ containerPort: 8000 }],
       environment: {
+        QUEUE_URL: queue.queueUrl,
         REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
         REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,

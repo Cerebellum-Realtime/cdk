@@ -44,8 +44,6 @@ exports.handler = async (event) => {
   });
 
   const newMessage = new Message({
-    messageId: uuid.v4(),
-
     channelId: newChannel.channelId,
     content: "From Lambda: Hello",
   });
