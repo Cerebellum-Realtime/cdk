@@ -1,7 +1,5 @@
 const dynamoose = require("dynamoose");
 const uuid = require("uuid");
-// import dynamoose from "dynamoose";
-// import { v4 as uuidv4 } from "uuid";
 
 const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
@@ -22,48 +20,45 @@ const messageSchema = new dynamoose.Schema({
   },
 });
 
-const channelSchema = new dynamoose.Schema({
-  channelName: {
-    type: String,
-    hashKey: true,
-  },
-  channelId: {
-    type: String,
-  },
-});
+// const channelSchema = new dynamoose.Schema({
+//   channelName: {
+//     type: String,
+//     hashKey: true,
+//   },
+//   channelId: {
+//     type: String,
+//   },
+// });
 
 const Message = dynamoose.model("messages", messageSchema);
-const Channel = dynamoose.model("channels", channelSchema);
+// const Channel = dynamoose.model("channels", channelSchema);
 
 exports.handler = async (event) => {
-  console.log("Received event:", JSON.stringify(event, null, 2));
+  console.log("Received event:", event);
 
-  const newChannel = new Channel({
-    channelId: `12345test${event.Records[0].body}`,
-    channelName: event.Records[0].body,
-  });
+  const { channelId, createdAt_messageId, content } = JSON.parse(
+    event.Records[0].body
+  );
 
   const newMessage = new Message({
-    channelId: newChannel.channelId,
-    content: "From Lambda: Hello",
+    channelId,
+    createdAt_messageId,
+    content,
   });
-
-  // if data is channel, save to channel db
-  // if data is msg, save to msg db
 
   try {
     await newMessage.save();
+    return { statusCode: 200, body: "Message processing completed" };
   } catch (e) {
     console.log("Error in newMessage.save()");
     console.log(e);
+    return { statusCode: 500, body: "Error processing message" };
   }
 
-  try {
-    await newChannel.save();
-  } catch (e) {
-    console.log("Error in newChannel.save()");
-    console.log(error);
-  }
-
-  return {};
+  // try {
+  //   await newChannel.save();
+  // } catch (e) {
+  //   console.log("Error in newChannel.save()");
+  //   console.log(error);
+  // }
 };
