@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "dynamoose": "^4.0.1"
+    "dynamoose": "^4.0.1",
+    "uuid": "^10.0.0"
   }
 }
