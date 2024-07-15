@@ -4,6 +4,9 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
@@ -36,8 +39,8 @@ export class ECS extends Construct {
       },
     });
 
-    const myFunction = new lambda.Function(this, "MyFunction", {
-      runtime: lambda.Runtime.NODEJS_16_X,
+    const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
       handler: `index.handler`, //change index to your lamda name
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
       environment: {
@@ -47,15 +50,43 @@ export class ECS extends Construct {
     });
 
     // Add the SQS queue as an event source for the Lambda function
-    myFunction.addEventSource(new eventsources.SqsEventSource(queue));
+    messageLambda.addEventSource(new eventsources.SqsEventSource(queue));
 
     // Grant permissions for Lambda to write to DynamoDB table
-    dynamodb.messagesTable.grantReadWriteData(myFunction);
-    dynamodb.channelsTable.grantReadWriteData(myFunction);
+    dynamodb.messagesTable.grantReadWriteData(messageLambda);
+    dynamodb.channelsTable.grantReadWriteData(messageLambda);
 
     queue.grantSendMessages(dynamodb.ecsTaskRole);
-    queue.grantConsumeMessages(myFunction);
-    dlq.grantSendMessages(myFunction);
+    queue.grantConsumeMessages(messageLambda);
+    dlq.grantSendMessages(messageLambda);
+
+    // Define the S3 bucket where "old data" can be moved to
+    const dataArchive = new s3.Bucket(this, "DataArchive");
+
+    const offloadDataFn = new lambda.Function(this, "ArchiveDataFn", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "messageArchive.handler",
+      code: lambda.Code.fromAsset("lambda"),
+      environment: {
+        MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
+        BUCKET_NAME: dataArchive.bucketName,
+      },
+    });
+
+    // Grant permissions
+    dynamodb.messagesTable.grantReadData(offloadDataFn);
+    dynamodb.messagesTable.grantWriteData(offloadDataFn);
+    dataArchive.grantPut(offloadDataFn);
+
+    const rule = new events.Rule(this, "ScheduleRule", {
+      schedule: events.Schedule.cron({
+        minute: "0",
+        hour: "0",
+        weekDay: "SUN",
+      }), // Runs at midnight every Sunday
+    });
+
+    rule.addTarget(new targets.LambdaFunction(offloadDataFn));
 
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
