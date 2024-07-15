@@ -4,14 +4,14 @@ const s3 = new AWS.S3();
 
 export const handler = async (event) => {
   const now = new Date();
-  const oneMinuteAgo = new Date(now);
-  oneMinuteAgo.setMinutes(now.getMinutes() - 1);
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(now.getFullYear() - 1);
 
   const params = {
     TableName: process.env.MESSAGES_TABLE_NAME,
-    FilterExpression: "createdAt <= :oneMinuteAgo",
+    FilterExpression: "createdAt <= :oneYearAgo",
     ExpressionAttributeValues: {
-      ":oneMinuteAgo": oneMinuteAgo.toISOString(),
+      ":oneYearAgo": oneYearAgo.toISOString(),
     },
   };
 
