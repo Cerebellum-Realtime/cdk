@@ -8,6 +8,7 @@ import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
 import path = require("path");
+import { MessageDataArchive } from "./MessageDataArchive";
 
 export class ECS extends Construct {
   service: ecs.FargateService;
@@ -36,7 +37,7 @@ export class ECS extends Construct {
       },
     });
 
-    const myFunction = new lambda.Function(this, "MyFunction", {
+    const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: `index.handler`, //change index to your lamda name
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
@@ -47,15 +48,17 @@ export class ECS extends Construct {
     });
 
     // Add the SQS queue as an event source for the Lambda function
-    myFunction.addEventSource(new eventsources.SqsEventSource(queue));
+    messageLambda.addEventSource(new eventsources.SqsEventSource(queue));
 
     // Grant permissions for Lambda to write to DynamoDB table
-    dynamodb.messagesTable.grantReadWriteData(myFunction);
-    dynamodb.channelsTable.grantReadWriteData(myFunction);
+    dynamodb.messagesTable.grantReadWriteData(messageLambda);
+    dynamodb.channelsTable.grantReadWriteData(messageLambda);
 
     queue.grantSendMessages(dynamodb.ecsTaskRole);
-    queue.grantConsumeMessages(myFunction);
-    dlq.grantSendMessages(myFunction);
+    queue.grantConsumeMessages(messageLambda);
+    dlq.grantSendMessages(messageLambda);
+
+    new MessageDataArchive(this, "MessageDataArchive", dynamodb);
 
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
