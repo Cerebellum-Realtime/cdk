@@ -38,7 +38,7 @@ export class ECS extends Construct {
     });
 
     const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
-      runtime: lambda.Runtime.NODEJS_16_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       handler: `index.handler`, //change index to your lamda name
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
       environment: {
@@ -92,7 +92,7 @@ export class ECS extends Construct {
       "Allow traffic from ALB to containers"
     );
 
-    const ecrImage = "public.ecr.aws/b5g1w6x4/austin-ws-server:latest";
+    const ecrImage = "public.ecr.aws/q8e0a8z0/austin-ws-server:latest";
     // "public.ecr.aws/x1a0a3q3/ws-server:latest";
 
     // Add a container and redis env to the task definition
