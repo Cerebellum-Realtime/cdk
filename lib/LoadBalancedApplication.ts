@@ -59,6 +59,19 @@ export class LoadBalancedApplication extends Construct {
 
     const ecs = new ECS(this, id, vpc, albSecurityGroup, elasticache);
 
+    const scalableTarget = ecs.service.autoScaleTaskCount({
+      minCapacity: 2,
+      maxCapacity: 5,
+    });
+
+    scalableTarget.scaleOnCpuUtilization("CpuScaling", {
+      targetUtilizationPercent: 50,
+    });
+
+    scalableTarget.scaleOnMemoryUtilization("MemoryScaling", {
+      targetUtilizationPercent: 50,
+    });
+
     httpListener.addTargets("HTTPTargets", {
       port: 80,
       targets: [ecs.service],
