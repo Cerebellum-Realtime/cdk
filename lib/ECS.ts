@@ -65,7 +65,7 @@ export class ECS extends Construct {
         memoryLimitMiB: 512,
         runtimePlatform: {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.X86_64,
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
         },
         taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
@@ -89,8 +89,7 @@ export class ECS extends Construct {
       "Allow traffic from ALB to containers"
     );
 
-    const ecrImage = "public.ecr.aws/b5g1w6x4/austin-ws-server:latest";
-    // "public.ecr.aws/x1a0a3q3/ws-server:latest";
+    const ecrImage = "public.ecr.aws/q8e0a8z0/avery-ws-server:latest";
 
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {

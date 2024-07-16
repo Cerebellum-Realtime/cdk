@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
-import { WebSocketServerStack } from "../lib/websocket-server-ecs-stack";
+import { AveryWebSocketServerStack } from "../lib/websocket-server-ecs-stack";
 
 const app = new cdk.App();
-new WebSocketServerStack(app, "WebSocketServerStack", {
+new AveryWebSocketServerStack(app, "AveryWebSocketServerStack", {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */

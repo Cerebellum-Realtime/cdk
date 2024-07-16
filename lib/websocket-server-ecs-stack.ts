@@ -4,7 +4,7 @@ import { Elasticache } from "./Elasticache";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { LoadBalancedApplication } from "./LoadBalancedApplication";
 
-export class WebSocketServerStack extends cdk.Stack {
+export class AveryWebSocketServerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
