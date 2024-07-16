@@ -4,6 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
@@ -20,6 +21,15 @@ export class ECS extends Construct {
     elasticache: Elasticache
   ) {
     super(scope, id);
+
+    const secret = new secretsmanager.Secret(this, "ApiKeySecret", {
+      secretName: "api-key-secret",
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: "apiKey",
+        passwordLength: 32,
+      },
+    });
 
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
@@ -65,11 +75,14 @@ export class ECS extends Construct {
         memoryLimitMiB: 512,
         runtimePlatform: {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.X86_64,
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
         },
         taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
     );
+
+    // Grant the task role permission to read the secret (API KEY)
+    secret.grantRead(taskDefinition.taskRole);
 
     // Create a security group for the container
     const ecsSecurityGroup = new ec2.SecurityGroup(
@@ -89,8 +102,7 @@ export class ECS extends Construct {
       "Allow traffic from ALB to containers"
     );
 
-    const ecrImage = "public.ecr.aws/b5g1w6x4/austin-ws-server:latest";
-    // "public.ecr.aws/x1a0a3q3/ws-server:latest";
+    const ecrImage = "public.ecr.aws/r8s7x4u1/ws-sample-app:latest";
 
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {
@@ -104,6 +116,9 @@ export class ECS extends Construct {
         REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
+      },
+      secrets: {
+        API_KEY: ecs.Secret.fromSecretsManager(secret, "apiKey"),
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: "WebSocketServer-Container",
