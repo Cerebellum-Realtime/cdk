@@ -78,7 +78,7 @@ export class LoadBalancedApplication extends Construct {
       certificates: [
         {
           certificateArn:
-            "arn:aws:acm:us-east-1:654654177904:certificate/15fab69b-3550-4e8d-a223-e1445a65f6b6",
+            "arn:aws:acm:us-east-1:654654177904:certificate/bd431022-7729-4f08-a16b-8805872a08d6", // Verified Certificate ARN from Certificate Manger
         },
       ],
       open: true,
