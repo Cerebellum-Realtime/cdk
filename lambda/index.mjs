@@ -13,6 +13,10 @@ const messageSchema = new dynamoose.Schema({
     type: String,
     rangeKey: true,
   },
+  createdAt: {
+    type: String,
+    required: true,
+  },
   content: {
     type: String,
     required: true,
@@ -35,12 +39,13 @@ const Message = dynamoose.model("messages", messageSchema);
 export const handler = async (event) => {
   console.log("Received event:", event);
 
-  const { channelId, createdAt_messageId, content } = JSON.parse(
+  const { channelId, createdAt, createdAt_messageId, content } = JSON.parse(
     event.Records[0].body
   );
 
   const newMessage = new Message({
     channelId,
+    createdAt,
     createdAt_messageId,
     content,
   });
