@@ -1,5 +1,4 @@
-const dynamoose = require("dynamoose");
-const uuid = require("uuid");
+import dynamoose from "dynamoose";
 
 const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
@@ -33,7 +32,7 @@ const messageSchema = new dynamoose.Schema({
 const Message = dynamoose.model("messages", messageSchema);
 // const Channel = dynamoose.model("channels", channelSchema);
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   console.log("Received event:", event);
 
   const { channelId, createdAt_messageId, content } = JSON.parse(
