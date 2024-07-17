@@ -9,6 +9,7 @@ import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
 import path = require("path");
+import { CfnOutput } from "aws-cdk-lib";
 
 export class ECS extends Construct {
   service: ecs.FargateService;
@@ -140,5 +141,11 @@ export class ECS extends Construct {
     );
 
     this.service.node.addDependency(elasticache);
+
+    new cdk.CfnOutput(this, "ApiKeySecretArnOutput", {
+      value: secret.secretArn,
+      description: "The ARN of the API key secret",
+      exportName: "ApiKeySecretArn",
+    });
   }
 }
