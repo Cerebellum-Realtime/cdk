@@ -17,7 +17,7 @@ export class DynamoDB extends Construct {
       this,
       "WebSocketServer-MessagesTable",
       {
-        tableName: "austinmessages",
+        tableName: "messages",
         partitionKey: {
           name: "channelId",
           type: dynamodb.AttributeType.STRING,
@@ -35,7 +35,7 @@ export class DynamoDB extends Construct {
       this,
       "WebSocketServer-ChannelsTable",
       {
-        tableName: "austinchannels",
+        tableName: "channels",
         partitionKey: {
           name: "channelName",
           type: dynamodb.AttributeType.STRING,

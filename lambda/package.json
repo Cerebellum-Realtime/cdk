@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@socket.io/redis-emitter": "^5.1.0",
     "aws-sdk": "^2.1659.0",
     "dynamoose": "^4.0.1",
+    "redis": "^4.6.15",
     "uuid": "^10.0.0"
   }
 }

@@ -35,11 +35,35 @@ export class ECS extends Construct {
 
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
+    // Define the Dead Letter Queue (DLQ)
+    const dlq = new sqs.Queue(this, "MyDLQ", {
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    const queue = new sqs.Queue(this, "EventQueueQueue", {
+      visibilityTimeout: cdk.Duration.seconds(5),
+      deadLetterQueue: {
+        maxReceiveCount: 5, // After 5 failed attempts, the message will be moved to the DLQ
+        queue: dlq,
+      },
+    });
+
     const apiGatewayFn = new lambda.Function(this, "ApiGatewayFunction", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "apiGateway.handler",
       code: lambda.Code.fromAsset("lambda"),
+      environment: {
+        QUEUE_URL: queue.queueUrl,
+        REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
+        REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
+      },
+      vpc: vpc,
     });
+
+    dynamodb.channelsTable.grantReadWriteData(apiGatewayFn);
+    queue.grantSendMessages(apiGatewayFn);
+
+    // apiGatewayFn.addEventSource(new eventsources.SqsEventSource(queue));
 
     // Define the API Gateway
     const api = new apigateway.RestApi(this, "ApiGateway", {
@@ -56,18 +80,26 @@ export class ECS extends Construct {
     const dataResource = api.root.addResource("data");
     dataResource.addMethod("POST", integration);
 
-    // Define the Dead Letter Queue (DLQ)
-    const dlq = new sqs.Queue(this, "MyDLQ", {
-      retentionPeriod: cdk.Duration.days(14),
-    });
-
-    const queue = new sqs.Queue(this, "EventQueueQueue", {
-      visibilityTimeout: cdk.Duration.seconds(5),
-      deadLetterQueue: {
-        maxReceiveCount: 5, // After 5 failed attempts, the message will be moved to the DLQ
-        queue: dlq,
-      },
-    });
+    /*
+      Routes for api gateway
+        - GET 
+          - GET data from the database
+          - Maybe do one route that pagiantes
+        - POST (incoming webhook)
+          - this would post data to the server
+          - Call the lambda that will send it to the elasticache
+            - woudl use socket.io emitter to do this
+            - need to pass in redis information
+          - This lambda would throw it in the queue
+          -> emit -> queue -> lambda -> database]
+                                ->>>> DLQ (if it can't save to database)
+        - PUT
+          - pass in message ID
+            - upate the message based on message ID
+        - Register webhooks for channels
+          - we would need a dynamoDB table to store the webhooks saved per channel
+          - Then we check when messages are sent to the q
+    */
 
     const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
