@@ -6,6 +6,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
 import path = require("path");
@@ -34,6 +35,27 @@ export class ECS extends Construct {
     });
 
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
+
+    const apiGatewayFn = new lambda.Function(this, "ApiGatewayFunction", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "apiGateway.handler",
+      code: lambda.Code.fromAsset("lambda"),
+    });
+
+    // Define the API Gateway
+    const api = new apigateway.RestApi(this, "ApiGateway", {
+      restApiName: "Real-time Data API Gateway",
+      description: "API Gateway For One-Way Real-time Data",
+    });
+
+    // Integrate the Lambda function with the API Gateway
+    const integration = new apigateway.LambdaIntegration(apiGatewayFn, {
+      requestTemplates: { "application/json": '{"statusCode": 200}' },
+    });
+
+    // Define a resource and method for the API
+    const dataResource = api.root.addResource("data");
+    dataResource.addMethod("POST", integration);
 
     // Define the Dead Letter Queue (DLQ)
     const dlq = new sqs.Queue(this, "MyDLQ", {
