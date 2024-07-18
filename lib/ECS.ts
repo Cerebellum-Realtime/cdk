@@ -9,7 +9,6 @@ import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
 import path = require("path");
-import { CfnOutput } from "aws-cdk-lib";
 import { MessageDataArchive } from "./MessageDataArchive";
 
 export class ECS extends Construct {
@@ -23,6 +22,11 @@ export class ECS extends Construct {
     elasticache: Elasticache
   ) {
     super(scope, id);
+
+    /** EDIT THESE VARIABLES PER YOUR REQUIREMENTS HERE, THE REST OF THE CODE REMAINS THE SAME **/
+    const ecrImage = "public.ecr.aws/q8e0a8z0/avery-ws-server:latest";
+    const taskCpuArchitecture = ecs.CpuArchitecture.ARM64;
+    /** END **/
 
     const secret = new secretsmanager.Secret(this, "ApiKeySecret", {
       secretName: "api-key-secret",
@@ -79,7 +83,7 @@ export class ECS extends Construct {
         memoryLimitMiB: 512,
         runtimePlatform: {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          cpuArchitecture: taskCpuArchitecture,
         },
         taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
@@ -105,8 +109,6 @@ export class ECS extends Construct {
       ec2.Port.tcpRange(0, 65535), // Allow TCP traffic for ports 0-65535
       "Allow traffic from ALB to containers"
     );
-
-    const ecrImage = "public.ecr.aws/r8s7x4u1/ws-sample-app:latest";
 
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {
