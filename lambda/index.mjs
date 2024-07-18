@@ -3,38 +3,7 @@ import dynamoose from "dynamoose";
 const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
 
-const messageSchema = new dynamoose.Schema({
-  channelId: {
-    type: String,
-    hashKey: true,
-    required: true,
-  },
-  createdAt_messageId: {
-    type: String,
-    rangeKey: true,
-  },
-  createdAt: {
-    type: String,
-    required: true,
-  },
-  content: {
-    type: String,
-    required: true,
-  },
-});
-
-// const channelSchema = new dynamoose.Schema({
-//   channelName: {
-//     type: String,
-//     hashKey: true,
-//   },
-//   channelId: {
-//     type: String,
-//   },
-// });
-
 const Message = dynamoose.model("messages", messageSchema);
-// const Channel = dynamoose.model("channels", channelSchema);
 
 export const handler = async (event) => {
   console.log("Received event:", event);
@@ -59,10 +28,4 @@ export const handler = async (event) => {
     return { statusCode: 500, body: "Error processing message" };
   }
 
-  // try {
-  //   await newChannel.save();
-  // } catch (e) {
-  //   console.log("Error in newChannel.save()");
-  //   console.log(error);
-  // }
 };

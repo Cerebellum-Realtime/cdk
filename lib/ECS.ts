@@ -52,6 +52,7 @@ export class ECS extends Construct {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: "apiGateway.handler",
       code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
       environment: {
         QUEUE_URL: queue.queueUrl,
         REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
