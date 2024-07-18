@@ -21,6 +21,11 @@ export class ECS extends Construct {
   ) {
     super(scope, id);
 
+    /** EDIT THESE VARIABLES PER YOUR REQUIREMENTS HERE, THE REST OF THE CODE REMAINS THE SAME **/
+    const ecrImage = "public.ecr.aws/q8e0a8z0/avery-ws-server:latest";
+    const taskCpuArchitecture = ecs.CpuArchitecture.ARM64;
+    /** END **/
+
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
     // Define the Dead Letter Queue (DLQ)
@@ -65,7 +70,7 @@ export class ECS extends Construct {
         memoryLimitMiB: 512,
         runtimePlatform: {
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          cpuArchitecture: taskCpuArchitecture,
         },
         taskRole: dynamodb.ecsTaskRole, // Assign the IAM role to the task definition
       }
@@ -88,8 +93,6 @@ export class ECS extends Construct {
       ec2.Port.tcpRange(0, 65535), // Allow TCP traffic for ports 0-65535
       "Allow traffic from ALB to containers"
     );
-
-    const ecrImage = "public.ecr.aws/q8e0a8z0/avery-ws-server:latest";
 
     // Add a container and redis env to the task definition
     taskDefinition.addContainer("WebSocketServer-Container", {

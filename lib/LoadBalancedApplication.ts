@@ -14,12 +14,30 @@ export class LoadBalancedApplication extends Construct {
   ) {
     super(scope, id);
 
+    const vpsIp = "159.203.61.78/32"; // specify IP address of client, followed by /32
+    const approvedCertificateARN =
+      "arn:aws:acm:us-east-1:654654177904:certificate/bf0b34c0-80cb-460b-92ff-b5e19aa30b19"; // Verified Certificate ARN from Certificate Manger
+
     // Create a security group for the Load Balancer
     const albSecurityGroup = new ec2.SecurityGroup(this, "ALBSecurityGroup", {
       vpc,
       description: "Allow HTTP and HTTPS traffic to the Load Balancer",
       allowAllOutbound: true, // Allow outbound traffic
     });
+
+    // // Allow inbound HTTP traffic on port 80 from the VPS IP
+    // albSecurityGroup.addIngressRule(
+    //   ec2.Peer.ipv4(vpsIp),
+    //   ec2.Port.tcp(80),
+    //   "Allow HTTP traffic from the VPS"
+    // );
+
+    // // Allow inbound HTTPS traffic on port 443 from the VPS IP
+    // albSecurityGroup.addIngressRule(
+    //   ec2.Peer.ipv4(vpsIp),
+    //   ec2.Port.tcp(443),
+    //   "Allow HTTPS traffic from the VPS"
+    // );
 
     // Allow inbound HTTP traffic on port 80
     albSecurityGroup.addIngressRule(
@@ -39,6 +57,7 @@ export class LoadBalancedApplication extends Construct {
       ec2.Port.tcp(443),
       "Allow HTTPS traffic from anywhere"
     );
+
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(443),
@@ -90,8 +109,7 @@ export class LoadBalancedApplication extends Construct {
       port: 443,
       certificates: [
         {
-          certificateArn:
-            "arn:aws:acm:us-east-1:654654177904:certificate/bd431022-7729-4f08-a16b-8805872a08d6", // Verified Certificate ARN from Certificate Manger
+          certificateArn: approvedCertificateARN,
         },
       ],
       open: true,
