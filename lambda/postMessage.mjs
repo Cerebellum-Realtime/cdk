@@ -10,16 +10,14 @@ const validateInput = (body) => {
   return { channelName, content };
 };
 
+const { io } = await initializeRedis();
+
 export const handler = async (event) => {
   try {
     const { channelName, content } = validateInput(event.body);
 
-    const [redisData, channelId] = await Promise.all([
-      initializeRedis(),
-      getChannel(channelName),
-    ]);
+    const channelId = await getChannel(channelName);
 
-    const { io } = redisData;
     io.to(channelName).emit(`message:receive:${channelName}`, {
       channelName,
       message: content,
@@ -30,6 +28,7 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: "Message processing completed" };
   } catch (error) {
+    console.log(error);
     return { statusCode: 500, body: "Error Sending Message to redis" };
   }
 };

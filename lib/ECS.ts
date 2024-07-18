@@ -48,9 +48,9 @@ export class ECS extends Construct {
       },
     });
 
-    const apiGatewayFn = new lambda.Function(this, "ApiGatewayFunction", {
+    const postMessage = new lambda.Function(this, "postMessage", {
       runtime: lambda.Runtime.NODEJS_20_X,
-      handler: "apiGateway.handler",
+      handler: "postMessage.handler",
       code: lambda.Code.fromAsset("lambda"),
       timeout: cdk.Duration.seconds(10),
       environment: {
@@ -61,10 +61,20 @@ export class ECS extends Construct {
       vpc: vpc,
     });
 
-    dynamodb.channelsTable.grantReadWriteData(apiGatewayFn);
-    queue.grantSendMessages(apiGatewayFn);
+    dynamodb.channelsTable.grantReadWriteData(postMessage);
+    queue.grantSendMessages(postMessage);
 
-    // apiGatewayFn.addEventSource(new eventsources.SqsEventSource(queue));
+    const getMessage = new lambda.Function(this, "getMessage", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "getMessage.handler",
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
+      environment: {},
+      vpc: vpc,
+    });
+    
+    dynamodb.channelsTable.grantReadWriteData(getMessage);
+    dynamodb.messagesTable.grantReadWriteData(getMessage);
 
     // Define the API Gateway
     const api = new apigateway.RestApi(this, "ApiGateway", {
@@ -73,13 +83,21 @@ export class ECS extends Construct {
     });
 
     // Integrate the Lambda function with the API Gateway
-    const integration = new apigateway.LambdaIntegration(apiGatewayFn, {
+    const postMessageIntegration = new apigateway.LambdaIntegration(
+      postMessage,
+      {
+        requestTemplates: { "application/json": '{"statusCode": 200}' },
+      }
+    );
+
+    const getMessageIntegration = new apigateway.LambdaIntegration(getMessage, {
       requestTemplates: { "application/json": '{"statusCode": 200}' },
     });
 
     // Define a resource and method for the API
     const dataResource = api.root.addResource("data");
-    dataResource.addMethod("POST", integration);
+    dataResource.addMethod("POST", postMessageIntegration);
+    dataResource.addMethod("GET", getMessageIntegration);
 
     /*
       Routes for api gateway
