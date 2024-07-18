@@ -20,9 +20,11 @@
     "typescript": "~5.4.5"
   },
   "dependencies": {
+    "@socket.io/redis-emitter": "^5.1.0",
     "aws-cdk-lib": "2.147.2",
     "constructs": "^10.0.0",
     "dynamoose": "^4.0.1",
+    "redis": "^4.6.15",
     "source-map-support": "^0.5.21"
   }
 }

@@ -6,6 +6,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
 import path = require("path");
@@ -52,10 +53,83 @@ export class ECS extends Construct {
       },
     });
 
+    const postMessage = new lambda.Function(this, "postMessage", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "postMessage.handler",
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        QUEUE_URL: queue.queueUrl,
+        REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
+        REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
+      },
+      vpc: vpc,
+    });
+
+    dynamodb.channelsTable.grantReadWriteData(postMessage);
+    queue.grantSendMessages(postMessage);
+
+    const getMessage = new lambda.Function(this, "getMessage", {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "getMessage.handler",
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
+      environment: {},
+      vpc: vpc,
+    });
+    
+    dynamodb.channelsTable.grantReadWriteData(getMessage);
+    dynamodb.messagesTable.grantReadWriteData(getMessage);
+
+    // Define the API Gateway
+    const api = new apigateway.RestApi(this, "ApiGateway", {
+      restApiName: "Real-time Data API Gateway",
+      description: "API Gateway For One-Way Real-time Data",
+    });
+
+    // Integrate the Lambda function with the API Gateway
+    const postMessageIntegration = new apigateway.LambdaIntegration(
+      postMessage,
+      {
+        requestTemplates: { "application/json": '{"statusCode": 200}' },
+      }
+    );
+
+    const getMessageIntegration = new apigateway.LambdaIntegration(getMessage, {
+      requestTemplates: { "application/json": '{"statusCode": 200}' },
+    });
+
+    // Define a resource and method for the API
+    const dataResource = api.root.addResource("data");
+    dataResource.addMethod("POST", postMessageIntegration);
+    dataResource.addMethod("GET", getMessageIntegration);
+
+    /*
+      Routes for api gateway
+        - GET 
+          - GET data from the database
+          - Maybe do one route that pagiantes
+        - POST (incoming webhook)
+          - this would post data to the server
+          - Call the lambda that will send it to the elasticache
+            - woudl use socket.io emitter to do this
+            - need to pass in redis information
+          - This lambda would throw it in the queue
+          -> emit -> queue -> lambda -> database]
+                                ->>>> DLQ (if it can't save to database)
+        - PUT
+          - pass in message ID
+            - upate the message based on message ID
+        - Register webhooks for channels
+          - we would need a dynamoDB table to store the webhooks saved per channel
+          - Then we check when messages are sent to the q
+    */
+
     const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: `index.handler`, //change index to your lamda name
-      code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
       environment: {
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
