@@ -105,7 +105,8 @@ export class ECS extends Construct {
     const messageLambda = new lambda.Function(this, "MessageDataToDynamoFn", {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: `index.handler`, //change index to your lamda name
-      code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")), // assuming your Lambda code is in the 'lambda' directory
+      code: lambda.Code.fromAsset("lambda"),
+      timeout: cdk.Duration.seconds(10),
       environment: {
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,

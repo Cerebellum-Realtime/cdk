@@ -1,9 +1,9 @@
+// import * as dynamoose from "dynamoose";
+import { Message } from "./models/messages.js";
 import dynamoose from "dynamoose";
 
 const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
-
-const Message = dynamoose.model("messages", messageSchema);
 
 export const handler = async (event) => {
   console.log("Received event:", event);
@@ -27,5 +27,4 @@ export const handler = async (event) => {
     console.log(e);
     return { statusCode: 500, body: "Error processing message" };
   }
-
 };

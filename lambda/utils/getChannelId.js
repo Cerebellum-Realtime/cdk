@@ -1,4 +1,4 @@
-import { Channel } from "../models/channels";
+import { Channel } from "../models/channels.js";
 
 export const getChannel = async (channelName) => {
   const channel = await Channel.query("channelName").eq(channelName).exec();
