@@ -4,6 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as eventsources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Elasticache } from "./Elasticache";
 import { DynamoDB } from "./DynamoDB";
@@ -27,6 +28,15 @@ export class ECS extends Construct {
     const ecrImage = "public.ecr.aws/q8e0a8z0/avery-ws-server:latest";
     const taskCpuArchitecture = ecs.CpuArchitecture.ARM64;
     /** END **/
+
+    const secret = new secretsmanager.Secret(this, "ApiKeySecret", {
+      secretName: "api-key-secret",
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: "apiKey",
+        passwordLength: 32,
+      },
+    });
 
     const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
 
@@ -78,6 +88,9 @@ export class ECS extends Construct {
       }
     );
 
+    // Grant the task role permission to read the secret (API KEY)
+    secret.grantRead(taskDefinition.taskRole);
+
     // Create a security group for the container
     const ecsSecurityGroup = new ec2.SecurityGroup(
       this,
@@ -108,6 +121,9 @@ export class ECS extends Construct {
         REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
         DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
+      },
+      secrets: {
+        API_KEY: ecs.Secret.fromSecretsManager(secret, "apiKey"),
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: "WebSocketServer-Container",
