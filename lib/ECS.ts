@@ -46,7 +46,7 @@ export class ECS extends Construct {
     });
 
     const queue = new sqs.Queue(this, "EventQueueQueue", {
-      visibilityTimeout: cdk.Duration.seconds(5),
+      visibilityTimeout: cdk.Duration.seconds(11),
       deadLetterQueue: {
         maxReceiveCount: 5, // After 5 failed attempts, the message will be moved to the DLQ
         queue: dlq,
@@ -77,7 +77,7 @@ export class ECS extends Construct {
       environment: {},
       vpc: vpc,
     });
-    
+
     dynamodb.channelsTable.grantReadWriteData(getMessage);
     dynamodb.messagesTable.grantReadWriteData(getMessage);
 
