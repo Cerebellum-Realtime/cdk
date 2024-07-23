@@ -23,6 +23,7 @@
     "@socket.io/redis-emitter": "^5.1.0",
     "aws-cdk-lib": "2.147.2",
     "constructs": "^10.0.0",
+    "dotenv": "^16.4.5",
     "dynamoose": "^4.0.1",
     "redis": "^4.6.15",
     "source-map-support": "^0.5.21"

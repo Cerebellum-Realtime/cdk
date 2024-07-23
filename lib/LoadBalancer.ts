@@ -2,10 +2,10 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { ECS } from "./ECS";
+import { AppServer } from "./AppServer";
 import { Elasticache } from "./Elasticache";
 
-export class LoadBalancedApplication extends Construct {
+export class LoadBalancer extends Construct {
   constructor(
     scope: Construct,
     id: string,
@@ -14,72 +14,70 @@ export class LoadBalancedApplication extends Construct {
   ) {
     super(scope, id);
 
-    /** Add Verified Certificate ARN from Certificate Manger **/
-    const approvedCertificateARN =
-      "arn:aws:acm:us-east-1:654654177904:certificate/bf0b34c0-80cb-460b-92ff-b5e19aa30b19";
-
-    // Create a security group for the Load Balancer
     const albSecurityGroup = new ec2.SecurityGroup(this, "ALBSecurityGroup", {
       vpc,
       description: "Allow HTTP and HTTPS traffic to the Load Balancer",
-      allowAllOutbound: true, // Allow outbound traffic
+      allowAllOutbound: true,
     });
 
-    // Allow inbound HTTP traffic on port 80
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic from anywhere"
-    );
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic from anywhere"
-    );
+    this.#addIngressRules(albSecurityGroup);
 
-    // Allow inbound HTTPS traffic on port 443
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(443),
-      "Allow HTTPS traffic from anywhere"
-    );
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(443),
-      "Allow HTTPS traffic from anywhere"
-    );
-
-    // Create a Load Balancer
     const lb = new elbv2.ApplicationLoadBalancer(this, "WebSocketServer-ALB", {
       vpc,
       internetFacing: true,
-      securityGroup: albSecurityGroup, // Associate the security group with the Load Balancer
+      securityGroup: albSecurityGroup,
     });
 
-    // Add a listener and a default target group
+    const appServer = new AppServer(
+      this,
+      id,
+      vpc,
+      albSecurityGroup,
+      elasticache
+    );
+
+    this.#addListenersAndTargets(lb, appServer);
+  }
+
+  #addIngressRules(albSecurityGroup: ec2.SecurityGroup) {
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      "Allow HTTP traffic from anywhere"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(80),
+      "Allow HTTP traffic from anywhere"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Allow HTTPS traffic from anywhere"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(443),
+      "Allow HTTPS traffic from anywhere"
+    );
+  }
+
+  #addListenersAndTargets(
+    lb: elbv2.ApplicationLoadBalancer,
+    appServer: AppServer
+  ) {
+    const approvedCertificateARN: string = process.env.CERTIFICATE_ARN || "";
+
     const httpListener = lb.addListener("HTTPListener", {
       port: 80,
     });
 
-    const ecs = new ECS(this, id, vpc, albSecurityGroup, elasticache);
-
-    const scalableTarget = ecs.service.autoScaleTaskCount({
-      minCapacity: 2,
-      maxCapacity: 5,
-    });
-
-    scalableTarget.scaleOnCpuUtilization("CpuScaling", {
-      targetUtilizationPercent: 50,
-    });
-
-    scalableTarget.scaleOnMemoryUtilization("MemoryScaling", {
-      targetUtilizationPercent: 50,
-    });
-
     httpListener.addTargets("HTTPTargets", {
       port: 80,
-      targets: [ecs.service],
+      targets: [appServer.service],
       stickinessCookieDuration: cdk.Duration.minutes(1), // Enable stickiness and set cookie duration
       healthCheck: {
         path: "/", // The path where the health check endpoint is located – could implement /health path
@@ -90,7 +88,6 @@ export class LoadBalancedApplication extends Construct {
       },
     });
 
-    // Adding HTTPS Listener
     const httpsListener = lb.addListener("HTTPSListener", {
       port: 443,
       certificates: [
@@ -102,10 +99,9 @@ export class LoadBalancedApplication extends Construct {
       protocol: elbv2.ApplicationProtocol.HTTPS,
     });
 
-    // Add targets to the HTTPS listener (same as HTTP)
     httpsListener.addTargets("HTTPSTargets", {
       port: 80,
-      targets: [ecs.service],
+      targets: [appServer.service],
       stickinessCookieDuration: cdk.Duration.minutes(1),
       healthCheck: {
         path: "/",
