@@ -39,20 +39,13 @@ describe("Testing That Resources are Created...", () => {
     });
   });
 
-  test("HTTPS Listener Created", () => {
-    template.hasResourceProperties("AWS::ElasticLoadBalancingV2::Listener", {
-      Port: 443,
-      Protocol: "HTTPS",
-    });
-  });
-
   test("HTTPS Listener Created with ARN Certificate", () => {
     template.hasResourceProperties("AWS::ElasticLoadBalancingV2::Listener", {
       Port: 443,
       Protocol: "HTTPS",
       Certificates: [
         {
-          CertificateArn: process.env.CERTIFICATE_ARN,
+          CertificateArn: process.env.CERTIFICATE_ARN || "",
         },
       ],
     });
