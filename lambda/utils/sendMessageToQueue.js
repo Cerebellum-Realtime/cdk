@@ -8,6 +8,10 @@ export const sendMessageToQueue = async (channelName, content) => {
 
   const now = new Date();
 
+  if (!channelName || !content) {
+    throw new Error("Invalid input: channelName and content are required");
+  }
+
   // we create messageId and createdAt time
   const params = {
     QueueUrl: process.env.QUEUE_URL,
@@ -19,10 +23,12 @@ export const sendMessageToQueue = async (channelName, content) => {
     }),
   };
 
+  console.log(params);
+
   try {
     const result = await sqs.send(new SendMessageCommand(params));
-    console.log("Message sent:", result.MessageId);
+    return { statusCode: 201 };
   } catch (error) {
-    console.error("Error sending message:", error);
+    throw new Error(error);
   }
 };

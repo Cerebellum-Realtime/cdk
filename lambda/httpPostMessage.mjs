@@ -10,17 +10,20 @@ const validateInput = (body) => {
   return { channelName, content };
 };
 
-const { io } = await initializeRedis();
-
 export const handler = async (event) => {
+  const { io } = await initializeRedis();
+
   try {
     const { channelName, content } = validateInput(event.body);
 
     await checkChannelExists(channelName);
 
+    const temporaryDate = new Date();
+
     io.to(channelName).emit(`message:receive:${channelName}`, {
       channelName,
       content,
+      createdAt: temporaryDate.toISOString(),
     });
 
     await sendMessageToQueue(channelName, content);
@@ -28,6 +31,13 @@ export const handler = async (event) => {
     return { statusCode: 200, body: "Message processing completed" };
   } catch (error) {
     console.log(error);
+    if (
+      error.message &&
+      error.message === "Invalid input: channelName and content are required"
+    ) {
+      return { statusCode: 400, body: error.message };
+    }
+
     return { statusCode: 500, body: "Error Sending Message to redis" };
   }
 };
