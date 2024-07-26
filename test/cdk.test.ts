@@ -1,6 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import * as Cdk from "../lib/websocket-server-ecs-stack";
+import * as Cdk from "../lib/CreateCerebellumStack";
 import { before } from "node:test";
 
 describe("Testing That Resources are Created...", () => {
@@ -9,7 +9,7 @@ describe("Testing That Resources are Created...", () => {
   before(() => {
     const app = new cdk.App();
     // WHEN
-    const stack = new Cdk.WebSocketServerStack(app, "MyTestStack");
+    const stack = new Cdk.CerebellumStack(app, "MyTestStack");
     // THEN
     template = Template.fromStack(stack);
   });

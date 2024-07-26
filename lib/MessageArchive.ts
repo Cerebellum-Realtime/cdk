@@ -11,11 +11,14 @@ export class MessageArchive extends Construct {
     super(scope, id);
 
     // Define the S3 bucket where "old data" can be moved to
-    const messageArchiveS3 = new s3.Bucket(this, "MessageArchiveBucket");
+    const messageArchiveS3 = new s3.Bucket(
+      this,
+      "CerebellumMessageArchiveBucket"
+    );
 
     const messageArchiveLambda = new lambda.Function(
       this,
-      "MessageArchiveLambda",
+      "CerebellumMessageArchiveLambda",
       {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "messageArchive.handler",
@@ -34,7 +37,7 @@ export class MessageArchive extends Construct {
 
     const messageArchiveCronJob = new events.Rule(
       this,
-      "MessageArchiveCronJob",
+      "CerebellumMessageArchiveCronJob",
       {
         schedule: events.Schedule.cron({
           minute: "0",

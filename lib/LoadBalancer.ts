@@ -6,6 +6,8 @@ import { AppServer } from "./AppServer";
 import { Elasticache } from "./Elasticache";
 
 export class LoadBalancer extends Construct {
+  vpc: ec2.IVpc;
+
   constructor(
     scope: Construct,
     id: string,
@@ -14,15 +16,21 @@ export class LoadBalancer extends Construct {
   ) {
     super(scope, id);
 
-    const albSecurityGroup = new ec2.SecurityGroup(this, "ALBSecurityGroup", {
-      vpc,
-      description: "Allow HTTP and HTTPS traffic to the Load Balancer",
-      allowAllOutbound: true,
-    });
+    this.vpc = vpc;
+
+    const albSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "CerebellumALBSecurityGroup",
+      {
+        vpc,
+        description: "Allow HTTPS traffic only to the Load Balancer",
+        allowAllOutbound: true,
+      }
+    );
 
     this.#addIngressRules(albSecurityGroup);
 
-    const lb = new elbv2.ApplicationLoadBalancer(this, "WebSocketServer-ALB", {
+    const lb = new elbv2.ApplicationLoadBalancer(this, "Cerebellum-ALB", {
       vpc,
       internetFacing: true,
       securityGroup: albSecurityGroup,
@@ -42,22 +50,9 @@ export class LoadBalancer extends Construct {
   #addIngressRules(albSecurityGroup: ec2.SecurityGroup) {
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic from anywhere"
-    );
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic from anywhere"
-    );
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
       "Allow HTTPS traffic from anywhere"
     );
-
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(443),
@@ -71,24 +66,7 @@ export class LoadBalancer extends Construct {
   ) {
     const approvedCertificateARN: string = process.env.CERTIFICATE_ARN || "";
 
-    const httpListener = lb.addListener("HTTPListener", {
-      port: 80,
-    });
-
-    httpListener.addTargets("HTTPTargets", {
-      port: 80,
-      targets: [appServer.service],
-      stickinessCookieDuration: cdk.Duration.minutes(1), // Enable stickiness and set cookie duration
-      healthCheck: {
-        path: "/", // The path where the health check endpoint is located – could implement /health path
-        interval: cdk.Duration.seconds(30), // The time interval between health checks
-        timeout: cdk.Duration.seconds(5), // The amount of time to wait when receiving a response from the health check
-        healthyThresholdCount: 5, // The number of consecutive health check successes required before considering an unhealthy target healthy
-        unhealthyThresholdCount: 2, // The number of consecutive health check failures required before considering a target unhealthy
-      },
-    });
-
-    const httpsListener = lb.addListener("HTTPSListener", {
+    const httpsListener = lb.addListener("CerebellumHTTPSListener", {
       port: 443,
       certificates: [
         {
@@ -99,12 +77,13 @@ export class LoadBalancer extends Construct {
       protocol: elbv2.ApplicationProtocol.HTTPS,
     });
 
-    httpsListener.addTargets("HTTPSTargets", {
+    httpsListener.addTargets("CerebellumHTTPSTargets", {
       port: 80,
       targets: [appServer.service],
       stickinessCookieDuration: cdk.Duration.minutes(1),
       healthCheck: {
         path: "/",
+        port: "3000",
         interval: cdk.Duration.seconds(30),
         timeout: cdk.Duration.seconds(5),
         healthyThresholdCount: 5,

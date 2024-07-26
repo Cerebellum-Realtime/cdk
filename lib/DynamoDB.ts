@@ -15,25 +15,31 @@ export class DynamoDB extends Construct {
 
     const messagesTable = new dynamodb.TableV2(
       this,
-      "WebSocketServer-MessagesTable",
+      "Cerebellum-MessagesTable",
       {
         tableName: "messages",
         partitionKey: {
-          name: "channelId",
+          name: "channelName",
           type: dynamodb.AttributeType.STRING,
         },
         sortKey: {
-          name: "createdAt_messageId",
+          name: "messageId",
           type: dynamodb.AttributeType.STRING,
         },
         billing: dynamodb.Billing.onDemand(),
-        removalPolicy: RemovalPolicy.DESTROY, // Optional: specify removal policy
+        removalPolicy: RemovalPolicy.DESTROY,
+        localSecondaryIndexes: [
+          {
+            indexName: "createdAtIndex",
+            sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
+          },
+        ],
       }
     );
 
     const channelsTable = new dynamodb.TableV2(
       this,
-      "WebSocketServer-ChannelsTable",
+      "Cerebellum-ChannelsTable",
       {
         tableName: "channels",
         partitionKey: {
@@ -41,11 +47,11 @@ export class DynamoDB extends Construct {
           type: dynamodb.AttributeType.STRING,
         },
         billing: dynamodb.Billing.onDemand(),
-        removalPolicy: RemovalPolicy.DESTROY, // Optional: specify removal policy
+        removalPolicy: RemovalPolicy.DESTROY,
       }
     );
 
-    const ecsTaskRole = new iam.Role(this, "EcsTaskRole", {
+    const ecsTaskRole = new iam.Role(this, "CerebellumEcsTaskRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
       inlinePolicies: {
         dynamoDBPolicy: new iam.PolicyDocument({
@@ -59,12 +65,9 @@ export class DynamoDB extends Construct {
       },
     });
 
-    const dynamoGatewayEndpoint = vpc.addGatewayEndpoint(
-      "dynamoGatewayEndpoint",
-      {
-        service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
-      }
-    );
+    vpc.addGatewayEndpoint("CerebellumDynamoGatewayEndpoint", {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+    });
 
     messagesTable.grantReadWriteData(ecsTaskRole);
     channelsTable.grantReadWriteData(ecsTaskRole);

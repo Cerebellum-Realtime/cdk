@@ -25,20 +25,21 @@ export class AppServer extends Construct {
   ) {
     super(scope, id);
 
-    const ecrImage: string = process.env.IMAGE_URI || "";
-    this.taskCpuArchitecture = ecs.CpuArchitecture.ARM64;
+    const containerImage: string = process.env.IMAGE_URI || "";
+    this.taskCpuArchitecture = ecs.CpuArchitecture.X86_64;
+
     this.operatingSystemFamily = ecs.OperatingSystemFamily.LINUX;
 
-    const secret = this.newSecret("ApiKeySecret");
+    const secret = this.newSecret("CerebellumApiKeySecret");
 
-    const dynamodb = new DynamoDB(this, "DynamoDB", vpc);
+    const dynamodb = new DynamoDB(this, "CerebellumDynamoDB", vpc);
 
     // Define the Dead Letter Queue (DLQ)
-    const messageDLQ = new sqs.Queue(this, "MessageDeadLetterQueue", {
+    const messageDLQ = new sqs.Queue(this, "CerebellumMessageDeadLetterQueue", {
       retentionPeriod: cdk.Duration.days(14),
     });
 
-    const messageQueue = new sqs.Queue(this, "MessageQueue", {
+    const messageQueue = new sqs.Queue(this, "CerebellumMessageQueue", {
       visibilityTimeout: cdk.Duration.seconds(11),
       deadLetterQueue: {
         maxReceiveCount: 5, // After 5 failed attempts, the message will be moved to the DLQ
@@ -48,7 +49,7 @@ export class AppServer extends Construct {
 
     const httpPostMessageLambda = new lambda.Function(
       this,
-      "PostMessageFromHttpRequest",
+      "CerebellumPostMessageFromHttpRequest",
       {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "httpPostMessage.handler",
@@ -58,6 +59,8 @@ export class AppServer extends Construct {
           QUEUE_URL: messageQueue.queueUrl,
           REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
           REDIS_ENDPOINT_PORT: elasticache.redisEndpointPort,
+          DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
+          DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
         },
         vpc: vpc,
       }
@@ -68,13 +71,16 @@ export class AppServer extends Construct {
 
     const httpGetMessageLambda = new lambda.Function(
       this,
-      "GetMessageFromHttpRequest",
+      "CerebellumGetMessageFromHttpRequest",
       {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "httpGetMessage.handler",
         code: lambda.Code.fromAsset("lambda"),
         timeout: cdk.Duration.seconds(10),
-        environment: {},
+        environment: {
+          DYNAMODB_CHANNELS_TABLE_NAME: dynamodb.channelsTable.tableName,
+          DYNAMODB_MESSAGES_TABLE_NAME: dynamodb.messagesTable.tableName,
+        },
         vpc: vpc,
       }
     );
@@ -83,7 +89,7 @@ export class AppServer extends Construct {
     dynamodb.messagesTable.grantReadWriteData(httpGetMessageLambda);
 
     // Define the API Gateway
-    const api = this.newApiGateway("ApiGateway");
+    const api = this.newApiGateway("CerebellumApiGateway");
 
     // Integrate the Lambda function with the API Gateway
     const postMessageIntegration = this.newApiLambdaIntegration(
@@ -107,7 +113,7 @@ export class AppServer extends Construct {
 
     const saveMessageToDatabaseLambda = new lambda.Function(
       this,
-      "SaveMessageToDatabase",
+      "CerebellumSaveMessageToDatabase",
       {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: `saveMessageToDatabase.handler`,
@@ -133,12 +139,12 @@ export class AppServer extends Construct {
     messageQueue.grantConsumeMessages(saveMessageToDatabaseLambda);
     messageDLQ.grantSendMessages(saveMessageToDatabaseLambda);
 
-    new MessageArchive(this, "MessageArchive", dynamodb);
+    new MessageArchive(this, "CerebellumMessageArchive", dynamodb);
 
     // Create a security group for the container
     const ecsSecurityGroup = new ec2.SecurityGroup(
       this,
-      "ContainerFromALBSecurityGroup",
+      "Cerebellum-ContainerFromALBSecurityGroup",
       {
         vpc,
         description: "Allow HTTP traffic from ALB to Containers",
@@ -163,11 +169,11 @@ export class AppServer extends Construct {
     secret.grantRead(taskDefinition.taskRole);
 
     // Add a container and redis env to the task definition
-    taskDefinition.addContainer("WebSocketServer-Container", {
-      image: ecs.ContainerImage.fromRegistry(ecrImage),
+    taskDefinition.addContainer("Cerebellum-Container", {
+      image: ecs.ContainerImage.fromRegistry(containerImage),
       cpu: 256,
       memoryLimitMiB: 512,
-      portMappings: [{ containerPort: 8000 }],
+      portMappings: [{ containerPort: 8001 }],
       environment: {
         QUEUE_URL: messageQueue.queueUrl,
         REDIS_ENDPOINT_ADDRESS: elasticache.redisEndpointAddress,
@@ -179,27 +185,23 @@ export class AppServer extends Construct {
         API_KEY: ecs.Secret.fromSecretsManager(secret, "apiKey"),
       },
       logging: new ecs.AwsLogDriver({
-        streamPrefix: "WebSocketServer-Container",
+        streamPrefix: "Cerebellum-Container",
       }),
     });
 
-    const cluster = new ecs.Cluster(this, "WebSocketServer-Cluster", { vpc });
+    const cluster = new ecs.Cluster(this, "Cerebellum-Cluster", { vpc });
 
-    this.service = new ecs.FargateService(
-      this,
-      "WebSocketServer-FargateService",
-      {
-        cluster,
-        taskDefinition,
-        desiredCount: Number(process.env.SCALING_MIN) || 1,
-        assignPublicIp: false,
-        securityGroups: [ecsSecurityGroup],
-      }
-    );
+    this.service = new ecs.FargateService(this, "Cerebellum-FargateService", {
+      cluster,
+      taskDefinition,
+      desiredCount: Number(process.env.SCALING_MIN) || 1,
+      assignPublicIp: false,
+      securityGroups: [ecsSecurityGroup],
+    });
 
     this.service.node.addDependency(elasticache);
 
-    new cdk.CfnOutput(this, "ApiKeySecretArnOutput", {
+    new cdk.CfnOutput(this, "CerebellumApiKeySecretArnOutput", {
       value: secret.secretArn,
       description: "The ARN of the API key secret",
       exportName: "ApiKeySecretArn",
@@ -238,7 +240,7 @@ export class AppServer extends Construct {
     memoryLimit: number,
     taskRole: cdk.aws_iam.IRole
   ) {
-    return new ecs.FargateTaskDefinition(this, "WebSocketServer-TaskDef", {
+    return new ecs.FargateTaskDefinition(this, "Cerebellum-TaskDef", {
       cpu: cpuLimit,
       memoryLimitMiB: memoryLimit,
       runtimePlatform: {

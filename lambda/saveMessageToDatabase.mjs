@@ -8,15 +8,15 @@ dynamoose.aws.ddb.set(ddb);
 export const handler = async (event) => {
   console.log("Received event:", event);
 
-  const { channelId, createdAt, createdAt_messageId, content } = JSON.parse(
+  const { channelName, messageId, content, createdAt } = JSON.parse(
     event.Records[0].body
   );
 
   const newMessage = new Message({
-    channelId,
-    createdAt,
-    createdAt_messageId,
+    channelName,
+    messageId,
     content,
+    createdAt,
   });
 
   try {

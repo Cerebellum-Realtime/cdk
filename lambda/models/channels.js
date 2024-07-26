@@ -3,15 +3,15 @@ import dynamoose from "dynamoose";
 const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
 
-const channelSchema = new dynamoose.Schema({
+export const channelSchema = new Schema({
   channelName: {
     type: String,
     hashKey: true,
-  },
-  channelId: {
-    type: String,
     required: true,
   },
 });
 
-export const Channel = dynamoose.model("channels", channelSchema);
+export const Channel = dynamoose.model(
+  process.env.DYNAMODB_CHANNELS_TABLE_NAME,
+  channelSchema
+);

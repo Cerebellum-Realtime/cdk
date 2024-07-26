@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const sqs = new SQSClient();
 
-export const sendMessageToQueue = async (channelId, message) => {
+export const sendMessageToQueue = async (channelName, content) => {
   // Use the queue URL from an environment variable or configuration
 
   const now = new Date();
@@ -12,10 +12,10 @@ export const sendMessageToQueue = async (channelId, message) => {
   const params = {
     QueueUrl: process.env.QUEUE_URL,
     MessageBody: JSON.stringify({
-      channelId,
-      createdAt_messageId: `${now.toISOString().padStart(20, "0")}_${uuidv4()}`,
-      content: `${message} => From Lambda API`,
-      createdAt: now.toISOString(),
+      channelName,
+      messageId: uuidv4(),
+      content,
+      createdAt: `${now.toISOString()}`,
     }),
   };
 
