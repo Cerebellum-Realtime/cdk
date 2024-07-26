@@ -3,17 +3,17 @@ import { v4 as uuidv4 } from "uuid";
 
 // Define the schema
 const messageSchema = new dynamoose.Schema({
-  channelId: {
+  channelName: {
     type: String,
     hashKey: true,
+    required: true,
   },
-  createdAt_messageId: {
+
+  messageId: {
     type: String,
     rangeKey: true,
     default: () => {
-      const now = new Date();
-      const uniqueId = uuidv4();
-      return `${now.toISOString().padStart(20, "0")}_${uniqueId}`;
+      return uuidv4();
     },
   },
   content: {
@@ -22,6 +22,10 @@ const messageSchema = new dynamoose.Schema({
   },
   createdAt: {
     type: String,
+    index: {
+      name: "createdAtIndex",
+      type: "local",
+    },
     required: true,
     default: () => {
       const now = new Date();
@@ -30,4 +34,7 @@ const messageSchema = new dynamoose.Schema({
   },
 });
 
-export const Message = dynamoose.model("messages", messageSchema);
+export const Message = dynamoose.model(
+  process.env.DYNAMODB_MESSAGES_TABLE_NAME,
+  messageSchema
+);

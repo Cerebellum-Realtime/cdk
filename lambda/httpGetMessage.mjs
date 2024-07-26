@@ -1,5 +1,5 @@
 import { getAllMessagesForChannel } from "./utils/getAllMessagesForChannel.js";
-import { getChannel } from "./utils/getChannelId.js";
+import { checkChannelExists } from "./utils/checkChannelExists.js";
 import dynamoose from "dynamoose";
 
 const ddb = new dynamoose.aws.ddb.DynamoDB();
@@ -17,10 +17,9 @@ export const handler = async (event) => {
   try {
     const { channelName } = validateInput(event.queryStringParameters);
 
-    console.log(channelName);
-    const channelId = await getChannel(channelName);
+    await checkChannelExists(channelName);
 
-    const pastMessages = await getAllMessagesForChannel(channelId);
+    const pastMessages = await getAllMessagesForChannel(channelName);
 
     return {
       statusCode: 200,

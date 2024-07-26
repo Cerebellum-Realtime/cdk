@@ -1,11 +1,11 @@
 import { Message } from "../models/messages.js";
 
-export const getAllMessagesForChannel = async (channelId) => {
+export const getAllMessagesForChannel = async (channelName) => {
   try {
-    const messages = await Message.query("channelId").eq(channelId).exec();
+    const messages = await Message.query("channelName").eq(channelName).exec();
 
     const contents = messages.map((message) => {
-      return { time: message.createdAt, content: message.content };
+      return { content: message.content, createdAt: message.createdAt };
     });
     return contents;
   } catch (error) {

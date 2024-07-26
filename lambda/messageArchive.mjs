@@ -37,8 +37,8 @@ export const handler = async (event) => {
       const deleteParams = {
         TableName: process.env.MESSAGES_TABLE_NAME,
         Key: {
-          channelId: item.channelId,
-          createdAt_messageId: item.createdAt_messageId,
+          channelName: item.channelName,
+          messageId: item.messageId,
         },
       };
       await dynamodb.delete(deleteParams).promise();

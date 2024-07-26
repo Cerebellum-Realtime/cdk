@@ -1,5 +1,5 @@
 import { sendMessageToQueue } from "./utils/sendMessageToQueue.js";
-import { getChannel } from "./utils/getChannelId.js";
+import { checkChannelExists } from "./utils/checkChannelExists.js";
 import { initializeRedis } from "./utils/initializeRedis.js";
 
 const validateInput = (body) => {
@@ -16,15 +16,14 @@ export const handler = async (event) => {
   try {
     const { channelName, content } = validateInput(event.body);
 
-    const channelId = await getChannel(channelName);
+    await checkChannelExists(channelName);
 
     io.to(channelName).emit(`message:receive:${channelName}`, {
       channelName,
-      message: content,
-      sendDescription: "from lambda",
+      content,
     });
 
-    await sendMessageToQueue(channelId, content);
+    await sendMessageToQueue(channelName, content);
 
     return { statusCode: 200, body: "Message processing completed" };
   } catch (error) {
