@@ -30,7 +30,6 @@ export const handler = async (event) => {
 
     return { statusCode: 200, body: "Message processing completed" };
   } catch (error) {
-    console.log(error);
     if (
       error.message &&
       error.message === "Invalid input: channelName and content are required"

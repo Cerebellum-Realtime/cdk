@@ -5,8 +5,6 @@ const ddb = new dynamoose.aws.ddb.DynamoDB();
 dynamoose.aws.ddb.set(ddb);
 
 export const handler = async (event) => {
-  console.log("Received event:", event);
-
   const { channelName, messageId, content, createdAt } = JSON.parse(
     event.Records[0].body
   );
@@ -29,8 +27,6 @@ export const handler = async (event) => {
     await newMessage.save();
     return { statusCode: 200, body: "Message processing completed" };
   } catch (e) {
-    console.log("Error in newMessage.save()");
-    console.log(e);
-    return { statusCode: 500, body: "Error processing message" };
+    return { statusCode: 500, body: `Error processing message: ${e}` };
   }
 };

@@ -23,8 +23,6 @@ export const sendMessageToQueue = async (channelName, content) => {
     }),
   };
 
-  console.log(params);
-
   try {
     const result = await sqs.send(new SendMessageCommand(params));
     return { statusCode: 201 };

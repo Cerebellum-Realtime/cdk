@@ -39,7 +39,6 @@ export const handler = async (event) => {
       headers: { "Content-Type": "application/json" },
     };
   } catch (error) {
-    console.log(error);
     if (
       error.message &&
       error.message === "Invalid input: channelName query parameter is required"

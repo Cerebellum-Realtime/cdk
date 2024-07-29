@@ -28,7 +28,6 @@ export const handler = async () => {
       await s3.putObject(s3params).promise();
 
       for (const item of data.Items) {
-        console.log("item: ", JSON.stringify(item));
         const deleteParams = {
           TableName: process.env.MESSAGES_TABLE_NAME,
           Key: {

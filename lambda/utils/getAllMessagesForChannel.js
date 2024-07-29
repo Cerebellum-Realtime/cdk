@@ -9,7 +9,6 @@ export const getAllMessagesForChannel = async (channelName) => {
     });
     return contents;
   } catch (error) {
-    console.error("Error retrieving messages for channel:", error);
     throw error;
   }
 };
