@@ -1,9 +1,6 @@
 import dynamoose from "dynamoose";
 
-const ddb = new dynamoose.aws.ddb.DynamoDB();
-dynamoose.aws.ddb.set(ddb);
-
-export const channelSchema = new Schema({
+export const channelSchema = new dynamoose.Schema({
   channelName: {
     type: String,
     hashKey: true,

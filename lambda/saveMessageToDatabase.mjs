@@ -1,4 +1,3 @@
-// import * as dynamoose from "dynamoose";
 import { Message } from "./models/messages.js";
 import dynamoose from "dynamoose";
 
@@ -11,6 +10,13 @@ export const handler = async (event) => {
   const { channelName, messageId, content, createdAt } = JSON.parse(
     event.Records[0].body
   );
+
+  if (!channelName || !messageId || !content || !createdAt) {
+    return {
+      statusCode: 400,
+      body: "Invalid arguments. Make sure to include all fields (channelName, messageId, content, createdAt)",
+    };
+  }
 
   const newMessage = new Message({
     channelName,
