@@ -51,12 +51,12 @@ export class LoadBalancer extends Construct {
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
-      "Allow HTTPS traffic from anywhere"
+      "Allow HTTPS traffic from anywhere with proper SSL/TLS credentials"
     );
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(443),
-      "Allow HTTPS traffic from anywhere"
+      "Allow HTTPS traffic from anywhere with proper SSL/TLS credentials"
     );
   }
 
@@ -89,6 +89,8 @@ export class LoadBalancer extends Construct {
         healthyThresholdCount: 5,
         unhealthyThresholdCount: 2,
       },
+      loadBalancingAlgorithmType:
+        elbv2.TargetGroupLoadBalancingAlgorithmType.LEAST_OUTSTANDING_REQUESTS,
     });
   }
 }
