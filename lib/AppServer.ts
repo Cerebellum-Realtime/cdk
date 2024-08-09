@@ -30,7 +30,7 @@ export class AppServer extends Construct {
 
     this.operatingSystemFamily = ecs.OperatingSystemFamily.LINUX;
 
-    const secret = this.newSecret("CerebellumApiKeySecret");
+    const secret = this.#newSecret("CerebellumApiKeySecret");
 
     const dynamodb = new DynamoDB(this, "CerebellumDynamoDB", vpc);
 
@@ -89,17 +89,17 @@ export class AppServer extends Construct {
     dynamodb.messagesTable.grantReadWriteData(httpGetMessageLambda);
 
     // Define the API Gateway
-    const api = this.newApiGateway("CerebellumApiGateway");
+    const api = this.#newApiGateway("CerebellumApiGateway");
 
     // Integrate the Lambda function with the API Gateway
-    const postMessageIntegration = this.newApiLambdaIntegration(
+    const postMessageIntegration = this.#newApiLambdaIntegration(
       httpPostMessageLambda,
       {
         requestTemplates: { "application/json": '{"statusCode": 200}' },
       }
     );
 
-    const getMessageIntegration = this.newApiLambdaIntegration(
+    const getMessageIntegration = this.#newApiLambdaIntegration(
       httpGetMessageLambda,
       {
         requestTemplates: { "application/json": '{"statusCode": 200}' },
@@ -159,7 +159,7 @@ export class AppServer extends Construct {
       "Allow traffic from ALB to containers"
     );
 
-    const taskDefinition = this.newTaskDefinition(
+    const taskDefinition = this.#newTaskDefinition(
       256,
       512,
       dynamodb.ecsTaskRole
@@ -210,7 +210,7 @@ export class AppServer extends Construct {
     this.#setScalableTarget();
   }
 
-  newSecret(name: string) {
+  #newSecret(name: string) {
     return new secretsmanager.Secret(this, name, {
       secretName: "api-key-secret",
       generateSecretString: {
@@ -221,21 +221,21 @@ export class AppServer extends Construct {
     });
   }
 
-  newApiGateway(name: string) {
+  #newApiGateway(name: string) {
     return new apigateway.RestApi(this, name, {
       restApiName: "Real-time Data API Gateway",
       description: "API Gateway For One-Way Real-time Data",
     });
   }
 
-  newApiLambdaIntegration(
+  #newApiLambdaIntegration(
     lambda: cdk.aws_lambda.Function,
     options: cdk.aws_apigateway.LambdaIntegrationOptions
   ) {
     return new apigateway.LambdaIntegration(lambda, options);
   }
 
-  newTaskDefinition(
+  #newTaskDefinition(
     cpuLimit: number,
     memoryLimit: number,
     taskRole: cdk.aws_iam.IRole
