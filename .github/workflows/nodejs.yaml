@@ -25,8 +25,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies in main folder
         run: npm install
+
+      - name: Install dependencies in lambda folder
+        run: cd lambda && npm install
 
       - name: Run tests
         run: npm test
